@@ -199,6 +199,7 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
         // this.assetLoader = new AssetLoader(); // REMOVED - Use provided loader
         this.assetLoader = assetLoader; 
         renderingSystem = new RenderingSystem(this.assetLoader);
+        renderingSystem.setImageObserver(this); // Set this panel as observer for animated GIFs
         gameState = new GameState();
         gameState.currentStage = new Stage(1,7);
 

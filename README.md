@@ -21,16 +21,20 @@ EQUINOX is a fast-paced, top-down space shooter game built in Java using Swing. 
 ## How to Run
 
 1.  **Prerequisites:** Make sure you have Java Development Kit (JDK) installed (e.g., JDK 11 or later).
-2.  **Compile:** Navigate to the `src` directory in your terminal and compile the Java files:
+2.  **Build:** Use the provided build script (recommended):
     ```bash
-    javac com/equinox/game/core/EquinoxGame.java -d ../out
+    ./compile.sh
     ```
-    (This assumes an `out` directory exists at the project root for compiled classes. Adjust as needed.)
-3.  **Run:** Navigate to the output directory (`out` in this example) and run the main class:
+    Or manually compile from project root:
     ```bash
-    java com.equinox.game.core.EquinoxGame
+    find src -name "*.java" | xargs javac -d out -cp out
+    cp -r src/assets out/
     ```
-    *(Ensure that the `assets` folder is accessible from where you run the command, often by having it in the project root or classpath.)*
+3.  **Run:** From the project root directory:
+    ```bash
+    java -cp out com.equinox.game.core.EquinoxGame
+    ```
+    **Note:** The assets folder must be copied to the `out` directory for the game to load backgrounds and sprites correctly.
 
 ## Controls
 

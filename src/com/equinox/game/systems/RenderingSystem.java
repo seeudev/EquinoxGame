@@ -20,9 +20,14 @@ import java.util.ArrayList;
 public class RenderingSystem {
 
     private AssetLoader assetLoader;
+    private Component imageObserver;
 
     public RenderingSystem(AssetLoader assetLoader) {
         this.assetLoader = assetLoader;
+    }
+
+    public void setImageObserver(Component observer) {
+        this.imageObserver = observer;
     }
 
     // Updated render method - takes GameState and UI state
@@ -61,7 +66,7 @@ public class RenderingSystem {
         Image bgImage = assetLoader.getBackgroundImage(stageNumber);
         
         if (bgImage != null) {
-            g.drawImage(bgImage, 0, 0, Constants.BOARD_WIDTH, Constants.BOARD_HEIGHT, null);
+            g.drawImage(bgImage, 0, 0, Constants.BOARD_WIDTH, Constants.BOARD_HEIGHT, imageObserver);
         } else {
             // Fallback if specific stage background not found
             g.setColor(Color.BLACK); // Or use a default background image
@@ -88,7 +93,7 @@ public class RenderingSystem {
         if (isPhaseShiftActive) {
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
         }
-        g2d.drawImage(ship.getImage(), ship.getX(), ship.getY(), ship.getWidth(), ship.getHeight(), null);
+        g2d.drawImage(ship.getImage(), ship.getX(), ship.getY(), ship.getWidth(), ship.getHeight(), imageObserver);
         g2d.dispose();
     }
 
@@ -97,7 +102,7 @@ public class RenderingSystem {
         if (enemyArray == null) return;
         for (Enemy enemy : enemyArray) {
             if (enemy.isAlive()) {
-                g.drawImage(enemy.getImage(), enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight(), null);
+                g.drawImage(enemy.getImage(), enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight(), imageObserver);
                 if (enemy instanceof Miniboss) {
                     drawBossHealthBar(g, (Miniboss) enemy);
                 } else if (enemy instanceof MainBoss) {
@@ -114,7 +119,7 @@ public class RenderingSystem {
         for (Bullet bullet : bulletArray) {
             if (!bullet.isUsed()) {
                 if (playerLaserImg != null) {
-                     g.drawImage(playerLaserImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+                     g.drawImage(playerLaserImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), imageObserver);
                 } else {
                     g.setColor(Color.WHITE);
                     g.fillRect(bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight());
@@ -150,7 +155,7 @@ public class RenderingSystem {
         for (EnemyBullet bullet : enemyBulletArray) {
             if (!bullet.isUsed()) {
                 if (enemyLaserImg != null) {
-                    g.drawImage(enemyLaserImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+                    g.drawImage(enemyLaserImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), imageObserver);
                 } else {
                      g.setColor(Color.RED);
                      g.fillRect(bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight());
