@@ -45,11 +45,13 @@ public class AssetLoader {
             loadImage(Constants.ENEMY_LASER_IMG_KEY, "/assets/weapon_laser_red.png");
 
             // Load Backgrounds (Store them in the map)
+            System.out.println("Loading stage backgrounds...");
             loadAndStoreBackground(Constants.BG_STAGE_1_KEY, "/assets/bg_space_nebula.png"); // Keep World 1 as nebula for now
             loadAndStoreBackground(Constants.BG_STAGE_2_KEY, "/assets/bg_ancient_ruins.png"); // UPDATE World 2 Background
             loadAndStoreBackground(Constants.BG_STAGE_3_KEY, "/assets/bg_quantum_singularity.png"); // UPDATE World 3 Background
             loadAndStoreBackground(Constants.BG_STAGE_4_KEY, "/assets/bg_sacred_temple.png"); // UPDATE World 4 Background
             loadAndStoreBackground(Constants.BG_DEFAULT_KEY, "/assets/bg_space_nebula.png"); // Default fallback remains nebula
+            System.out.println("Background images loaded: " + backgroundImages.size() + " stages mapped");
 
              // Load Cutscene Backgrounds (Assuming these paths are correct or placeholders)
             loadAndStoreBackground(Constants.BG_CUTSCENE_1_KEY, "/assets/bg_cutscene_bridge.png"); 
@@ -136,15 +138,25 @@ public class AssetLoader {
     private Image loadAndStoreBackground(String key, String path) {
         Image img = loadImage(key, path);
         if (img != null) {
-            // Determine stage number from key (simple example)
-             if (key.contains("_STAGE_1")) backgroundImages.put(1, img);
-            else if (key.contains("_STAGE_2")) backgroundImages.put(2, img);
-            else if (key.contains("_STAGE_3")) backgroundImages.put(3, img);
-            else if (key.contains("_STAGE_4")) backgroundImages.put(4, img);
-             // Add logic for cutscene keys if storing differently
-            else if (key.equals(Constants.BG_CUTSCENE_1_KEY)) imageMap.put(key, img); // Store cutscenes normally for now
-            else if (key.equals(Constants.BG_CUTSCENE_2_KEY)) imageMap.put(key, img);
-             // Handle default separately or based on map contents later
+            // Determine stage number from key - match actual constant patterns
+            if (key.equals(Constants.BG_STAGE_1_KEY)) {
+                backgroundImages.put(1, img);
+                System.out.println("  → Stage 1 background mapped");
+            } else if (key.equals(Constants.BG_STAGE_2_KEY)) {
+                backgroundImages.put(2, img);
+                System.out.println("  → Stage 2 background mapped");
+            } else if (key.equals(Constants.BG_STAGE_3_KEY)) {
+                backgroundImages.put(3, img);
+                System.out.println("  → Stage 3 background mapped");
+            } else if (key.equals(Constants.BG_STAGE_4_KEY)) {
+                backgroundImages.put(4, img);
+                System.out.println("  → Stage 4 background mapped");
+            } else if (key.equals(Constants.BG_DEFAULT_KEY)) {
+                // Store default background for stages without specific backgrounds
+                backgroundImages.putIfAbsent(0, img);
+                System.out.println("  → Default background mapped");
+            }
+            // Cutscenes are already stored in imageMap by loadImage()
         }
         return img;
     }
@@ -177,8 +189,23 @@ public class AssetLoader {
     }
 
     public Image getBackgroundImage(int stageNumber) {
-        // Return specific stage background if available, otherwise default
-        return backgroundImages.getOrDefault(stageNumber, getImage(Constants.BG_DEFAULT_KEY)); 
+        // Check if specific stage background exists
+        if (backgroundImages.containsKey(stageNumber)) {
+            return backgroundImages.get(stageNumber);
+        }
+        
+        // Fallback to default background
+        Image defaultBg = backgroundImages.get(0);
+        if (defaultBg == null) {
+            // If even default is missing, try loading from imageMap
+            defaultBg = getImage(Constants.BG_DEFAULT_KEY);
+        }
+        
+        if (defaultBg == null) {
+            System.err.println("Warning: No background found for stage " + stageNumber + " and no default available");
+        }
+        
+        return defaultBg;
     }
 
     // Maybe add methods for loading sounds in the future

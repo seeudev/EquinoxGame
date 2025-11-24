@@ -56,6 +56,15 @@ public class InputHandler implements KeyListener {
                         gameState.isFiring = true; // Set firing flag on press
                     }
                     break;
+                case KeyEvent.VK_Q:
+                    gameLogic.fireWaveBlast();
+                    break;
+                case KeyEvent.VK_E:
+                    gameLogic.fireLaserBeam();
+                    break;
+                case KeyEvent.VK_R:
+                    gameLogic.firePhaseShift();
+                    break;
             }
         }
     }
@@ -75,7 +84,13 @@ public class InputHandler implements KeyListener {
             case GAME_OVER:
                 handleGameOverInputReleased(keyCode);
                 break;
-            // Add cases for CUTSCENE etc. if needed
+            case CUTSCENE:
+            case SHOP:
+            case LEADERBOARD:
+            case SETTINGS:
+            case CREDITS:
+                // No input handling needed for these states
+                break;
         }
     }
 
