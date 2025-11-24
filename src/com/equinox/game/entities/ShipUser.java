@@ -65,10 +65,10 @@ public class ShipUser extends Entity {
         if (this.maxHealth > oldMaxHealth) {
             // Give the player the health they just bought
              setHealth(this.health + (this.maxHealth - oldMaxHealth));
+             System.out.println("Ship upgraded: Max HP now " + this.maxHealth);
         } else {
              // Ensure current health doesn't exceed new max if max was somehow lowered (unlikely)
             setHealth(this.health); // Re-clamp health to new max
         }
-        System.out.println("Ship stats recalculated. New Max HP: " + this.maxHealth);
     }
 } 

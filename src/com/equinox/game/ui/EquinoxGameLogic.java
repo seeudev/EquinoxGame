@@ -276,16 +276,9 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     //Stage Manager
     public void setStageManager(StageManager stageManager) {
         this.stageManager = stageManager;
-        // Possibly trigger initial enemy creation or menu display here
-        if (currentGameState == GameStateEnum.PLAYING) {
-             // Call the new reset method in GameState
-             if (gameState != null) gameState.resetForNewGame(); 
-             // Call createEnemies from GameUpdateSystem
-             if (gameUpdateSystem != null) gameUpdateSystem.createEnemies(); 
-             startGameLoop();
-        } else if (currentGameState == GameStateEnum.MAIN_MENU) {
-            repaint(); // Ensure menu is drawn initially
-        }
+        // Only initialize the manager reference, do NOT trigger game actions
+        // Game actions should only be triggered by explicit user input (startGame, etc.)
+        System.out.println("StageManager initialized");
     }
     //GAMESTATE GETTER FOR CUTSCENES
     public GameState getGameState() {
@@ -463,7 +456,7 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     @Override
     public void actionPerformed(ActionEvent e) {
         String command = e.getActionCommand();
-        System.out.println("Action Performed: " + command + " in state: " + currentGameState); 
+        // Only log important state changes, not every button click
         
         // Handle Main Menu button clicks
         if (currentGameState == GameStateEnum.MAIN_MENU) {
@@ -519,11 +512,23 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     // Method to reset the current level/stage state
     public void restartLevel() { 
         if (currentGameState == GameStateEnum.GAME_OVER && gameUpdateSystem != null) {
-            System.out.println("Restarting level...");
-            gameState.resetForNewGame(); // Use GameState's reset method
-            if (gameUpdateSystem != null) gameUpdateSystem.createEnemies(); // Need to recreate enemies after reset
+            System.out.println("Restarting game...");
+            
+            // Clear any UI elements
+            removeAll();
+            setLayout(null);
+            
+            // Reset game state
+            gameState.resetForNewGame();
+            gameState.startTimeMillis = System.currentTimeMillis();
+            
+            // Create enemies and start
+            gameUpdateSystem.createEnemies();
             currentGameState = GameStateEnum.PLAYING;
             startGameLoop();
+            
+            revalidate();
+            repaint();
             requestFocusInWindow();
         }
      }
@@ -552,27 +557,7 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     }
     */
 
-    // Methods for menu navigation (called by InputHandler) - DELETE THESE
-    /* DELETE START
-    public void menuUp() {
-        System.out.println("Menu Up: Before = " + selectedMenuItem);
-        selectedMenuItem = (selectedMenuItem - 1 + menuItems.length) % menuItems.length;
-        System.out.println("Menu Up: After = " + selectedMenuItem);
-        repaint();
-    }
-
-    public void menuDown() {
-        System.out.println("Menu Down: Before = " + selectedMenuItem);
-        selectedMenuItem = (selectedMenuItem + 1) % menuItems.length;
-        System.out.println("Menu Down: After = " + selectedMenuItem);
-        repaint();
-    }
-
-    public void menuSelect() {
-        System.out.println("Menu Select: Index = " + selectedMenuItem + ", Item = " + menuItems[selectedMenuItem]);
-        handleMenuSelection(menuItems[selectedMenuItem]);
-    }
-    DELETE END */
+    // Menu navigation methods removed - now using Swing buttons
 
     // --- Display Control ---
     public void showLeaderboard() {
@@ -589,37 +574,39 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     }
 
     public void showMainMenu() {
-        if (mainFrame != null) { // Check frame exists
-            // Remove the CURRENTLY displayed panel, whatever it is.
-            // This assumes only one of these panels (Leaderboard, Shop, Settings, Credits)
-            // or the main game logic panel (`this`) is displayed at a time.
+        if (mainFrame != null) {
+            // Stop any running game loop
+            if (gameLoop != null && gameLoop.isRunning()) {
+                stopGameLoop();
+            }
+            
+            // Remove current component from frame
             Component currentComponent = mainFrame.getContentPane().getComponent(0);
             if (currentComponent != null) {
                 mainFrame.remove(currentComponent);
             }
             
-            mainFrame.add(this); // Add the main logic panel back
-            setCurrentState(GameStateEnum.MAIN_MENU); // Set state to MAIN_MENU
-            setupMainMenu(); // <--- Add this line to re-add the buttons
+            // Reset to main menu state
+            currentGameState = GameStateEnum.MAIN_MENU;
+            
+            // Setup menu UI
+            setupMainMenu();
+            
+            // Add this panel back to frame
+            mainFrame.add(this);
             mainFrame.pack();
             mainFrame.revalidate();
             mainFrame.repaint();
             requestFocusInWindow();
+            
+            System.out.println("Returned to main menu");
         }
     }
 
     // --- Cheat Management ---
     public void toggleCheats() {
         gameState.cheatsEnabled = !gameState.cheatsEnabled;
-        System.out.println("Cheats " + (gameState.cheatsEnabled ? "Enabled" : "Disabled"));
-        // REMOVED direct cooldown reset - handled by GameState/GameUpdateSystem potentially
-        /*
-        if (gameState.cheatsEnabled) {
-            remainingWaveBlastCooldown = 0;
-            remainingLaserBeamCooldown = 0;
-            remainingPhaseShiftCooldown = 0;
-        }
-        */
+        System.out.println("CHEATS: " + (gameState.cheatsEnabled ? "ENABLED" : "DISABLED"));
         if (currentGameState == GameStateEnum.MAIN_MENU || currentGameState == GameStateEnum.PLAYING) {
              repaint(); // Repaint to update cheat indicator or menu item color
         }
@@ -644,7 +631,11 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
             gameState.gameOver = true; // Mark game as over
             // The gameWon flag is set by GameUpdateSystem if applicable
             currentGameState = GameStateEnum.GAME_OVER;
-            System.out.println("State changed to GAME_OVER (Win status: " + gameState.gameWon + ")");
+            if (gameState.gameWon) {
+                System.out.println("*** VICTORY! Final Score: " + gameState.score + " ***");
+            } else {
+                System.out.println("Game Over - Score: " + gameState.score);
+            }
 
             // REMOVED: Prompt and save logic moved to handleGiveUp
             
@@ -655,25 +646,48 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
 
     public void startGame() {
         if (currentGameState == GameStateEnum.MAIN_MENU && gameUpdateSystem != null) {
-            gameState.resetForNewGame(); // Use GameState's reset method
-            gameState.startTimeMillis = System.currentTimeMillis(); // RECORD START TIME
+            System.out.println("Starting new game...");
+            
+            // Reset game state first
+            gameState.resetForNewGame();
+            gameState.startTimeMillis = System.currentTimeMillis();
+            
+            // Apply cheat bonuses if enabled
             if (gameState.cheatsEnabled) {
-                // Use the new addMoney helper to also update maxMoneyAchieved
                 gameState.addMoney(Constants.CHEAT_MONEY_BONUS);
-                System.out.println("Cheats Active: +" + Constants.CHEAT_MONEY_BONUS + " Money!");
+                System.out.println("CHEATS enabled: Money = " + gameState.money);
             } else {
-                 // Ensure maxMoney is correctly initialized even if cheats aren't on
-                 gameState.maxMoneyAchieved = gameState.money;
+                gameState.maxMoneyAchieved = gameState.money;
             }
+            
+            // CRITICAL: Clear menu UI before transitioning to game
+            removeAll();
+            setLayout(null); // Clear layout for game rendering
+            
+            // Transition to playing state
             currentGameState = GameStateEnum.PLAYING;
-            System.out.println("State changed to PLAYING");
+            
+            // Start cutscene or create enemies
             if (stageManager != null) {
                 stageManager.startCutscene(); 
             } else {
-                gameUpdateSystem.createEnemies(); // Delegate enemy creation
+                gameUpdateSystem.createEnemies();
+                startGameLoop();
             }
+            
+            // Ensure focus for input handling
+            revalidate();
+            repaint();
+            requestFocusInWindow();
+        }
+    }
+
+    // Called by StageManager after cutscene ends
+    public void startGameAfterCutscene() {
+        if (gameUpdateSystem != null) {
+            gameUpdateSystem.createEnemies();
             startGameLoop();
-             requestFocusInWindow();
+            requestFocusInWindow();
         }
     }
 
@@ -686,15 +700,25 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
 
     // Added setter for StageManager to control game state
     public void setCurrentState(GameStateEnum newState) {
+        GameStateEnum oldState = this.currentGameState;
         this.currentGameState = newState;
-        System.out.println("GameState changed to: " + newState); // Debug log
-        if (newState != GameStateEnum.PLAYING) {
-            stopGameLoop(); // Stop game updates if not playing
-        } else if (newState == GameStateEnum.PLAYING && !gameLoop.isRunning()){
-             startGameLoop(); // Start loop if transitioning to playing and it's stopped
-        } 
-        // Repaint might be needed depending on how panels are switched
-        repaint(); 
+        
+        // Log state transitions
+        System.out.println("State transition: " + oldState + " -> " + newState);
+        
+        // Handle game loop based on state
+        if (newState == GameStateEnum.PLAYING) {
+            if (gameLoop != null && !gameLoop.isRunning()) {
+                startGameLoop();
+            }
+        } else {
+            if (gameLoop != null && gameLoop.isRunning()) {
+                stopGameLoop();
+            }
+        }
+        
+        // Trigger repaint
+        repaint();
     }
 
     // Called when Esc is pressed on Game Over screen
@@ -727,6 +751,7 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
 
             // Save score with the entered name
             LeaderboardManager.addEntryFromGameState(gameState, playerName);
+            System.out.println("Score saved for " + playerName + ": " + gameState.score);
 
             // After saving, go back to the main menu
             showMainMenu();
@@ -734,14 +759,24 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     }
 
     private void setupMainMenu() {
-        removeAll(); 
-        setLayout(new BorderLayout()); // Ensure parent has a layout
-        add(menuButtonPanel, BorderLayout.CENTER); // Add the button panel
-        // No need to add key listener here specifically for menu nav
+        // Clear any existing components
+        removeAll();
+        
+        // Set layout and add menu buttons
+        setLayout(new BorderLayout());
+        if (menuButtonPanel != null) {
+            add(menuButtonPanel, BorderLayout.CENTER);
+        } else {
+            System.err.println("ERROR: menuButtonPanel is null in setupMainMenu!");
+        }
+        
+        // Ensure this panel can receive input
         setFocusable(true);
-        requestFocusInWindow(); 
+        
+        // Update display
         revalidate();
         repaint();
+        requestFocusInWindow();
     }
     
     private void setupSettingsPanel() {
@@ -788,7 +823,7 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
-        System.out.println("Key Pressed: " + KeyEvent.getKeyText(key) + " in state: " + currentGameState); 
+        // Only log important key events for debugging, not every keypress
         
         if (currentGameState == GameStateEnum.GAME_OVER) {
             if (key == KeyEvent.VK_R) {
@@ -830,7 +865,6 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
 
     // Helper method from Main Menu Logic (ensure drawMainMenu exists)
     public void handleMenuSelection(String selection) {
-        System.out.println("Menu Selection: " + selection); 
         switch (selection) {
             case "Start Game":
                 startGame();
@@ -874,10 +908,11 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
     // Ensure enterShop and exitShop use the setup method correctly
     private void enterShop() {
         if (currentGameState == GameStateEnum.PLAYING) {
-            gameLoop.stop(); // Pause game
+            stopGameLoop(); // Pause game
             currentGameState = GameStateEnum.SHOP;
             removeKeyListener(inputHandler); // Remove game input listener
             setupShopPanel(); // Setup and show the shop panel
+            System.out.println("Entered shop");
         }
     }
 
@@ -885,12 +920,14 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
         if (currentGameState == GameStateEnum.SHOP) {
             currentGameState = GameStateEnum.PLAYING;
             removeAll(); // Remove shop panel
+            setLayout(null); // Reset layout for game rendering
             addKeyListener(inputHandler); // Re-add game input listener
             setFocusable(true);
             requestFocusInWindow();
             revalidate();
             repaint();
-            gameLoop.start(); // Resume game
+            startGameLoop(); // Resume game
+            System.out.println("Exited shop, resuming game");
         }
     }
 
@@ -915,9 +952,9 @@ public class EquinoxGameLogic extends JPanel implements ActionListener, KeyListe
             if (playerName != null && !playerName.trim().isEmpty()) {
                 // Use the helper method from LeaderboardManager
                 LeaderboardManager.addEntryFromGameState(gameState, playerName.trim());
-                System.out.println("Score submitted for: " + playerName.trim());
+                System.out.println("Leaderboard entry saved for " + playerName.trim());
             } else {
-                System.out.println("Score submission cancelled or name empty.");
+                System.out.println("Score submission cancelled.");
             }
             // Regardless of submission, go to leaderboard screen
             currentGameState = GameStateEnum.LEADERBOARD;

@@ -1,14 +1,3 @@
-# Dev notes
-
-# Presentation
-
-* **1 person explain the story:**
-    * Summarize:
-        * Put summarize button in the game.
-    * Rationale
-
-* **1 navigator:** (Role/Task)
-* **2 reporters:** (Role/Task)
 
 ## Game Improvements:
 

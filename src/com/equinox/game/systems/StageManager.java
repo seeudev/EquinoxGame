@@ -139,29 +139,71 @@ public class StageManager {
     public void startCutscene() {
         int currentStage = gameLogic.getGameState().currentStage.getStageNumber();
         CutsceneData data = cutsceneDataMap.get(currentStage);
+        
+        System.out.println("Starting cutscene for stage " + currentStage);
+        
         if (data != null) {
+            // Set cutscene state
+            gameLogic.setCurrentState(EquinoxGameLogic.GameStateEnum.CUTSCENE);
+            
+            // Setup cutscene panel
             cutscenePanel.setCutsceneData(data);
+            
+            // Swap panels
             frame.remove(gameLogic);
             frame.add(cutscenePanel);
             frame.pack();
             frame.revalidate();
             frame.repaint();
+            
             cutscenePanel.startCutsceneDisplay();
             cutscenePanel.requestFocusInWindow();
         } else {
             System.err.println("No cutscene data found for stage: " + currentStage);
-            showShop();
+            // Skip to gameplay if no cutscene
+            endCutscene();
         }
     }
 
     public void showShop() {
-        frame.remove(cutscenePanel);
+        System.out.println("Opening shop");
+        
+        // Remove current panel (could be cutscene or game)
+        Component[] components = frame.getContentPane().getComponents();
+        for (Component comp : components) {
+            frame.remove(comp);
+        }
+        
+        // Set shop state
         gameLogic.setCurrentState(EquinoxGameLogic.GameStateEnum.SHOP);
+        
+        // Add shop panel
         frame.add(shopPanel);
         frame.pack();
         frame.revalidate();
         frame.repaint();
+        
         shopPanel.setupShopUI();
+        shopPanel.requestFocusInWindow();
+    }
+
+    public void endCutscene() {
+        System.out.println("Cutscene ended, starting gameplay");
+        
+        // Remove cutscene panel
+        frame.remove(cutscenePanel);
+        
+        // Set playing state
+        gameLogic.setCurrentState(EquinoxGameLogic.GameStateEnum.PLAYING);
+        
+        // Add game logic panel back
+        frame.add(gameLogic);
+        frame.pack();
+        frame.revalidate();
+        frame.repaint();
+        
+        // Tell gameLogic to create enemies - it will delegate to gameUpdateSystem internally
+        gameLogic.startGameAfterCutscene();
     }
 
     public void startGameLoop() {

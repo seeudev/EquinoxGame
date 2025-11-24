@@ -6,7 +6,6 @@ import com.equinox.game.entities.enemies.*; // Keep enemy imports
 import com.equinox.game.ui.EquinoxGameLogic; // Needed for state transitions
 import com.equinox.game.utils.AssetLoader;
 import com.equinox.game.utils.Constants;
-import com.equinox.game.leaderboard.LeaderboardManager; // Import LeaderboardManager
 
 import java.awt.Image;
 import java.util.ArrayList;
@@ -112,7 +111,7 @@ public class GameUpdateSystem {
                 // Check if enemy reached the player's Y position (Game Over condition)
                 // Only trigger if the bottom of the enemy reaches the top of the ship's Y coordinate
                 if (enemy.getY() + enemy.getHeight() > gameState.ship.getY()) {
-                    System.out.println("Game Over triggered by enemy at Y: " + enemy.getY() + " vs Ship Y: " + gameState.ship.getY()); // Debug log
+                    System.out.println("GAME OVER: Enemy reached player position!");
                     gameLogic.signalGameOver(); 
                     return; // Exit loop immediately on game over
                 }
@@ -218,7 +217,6 @@ public class GameUpdateSystem {
         // Handle Phase Shift duration
         if (gameState.isPhaseShiftActive && currentTime >= gameState.phaseShiftEndTime) {
             gameState.isPhaseShiftActive = false;
-            System.out.println("Phase Shift Deactivated."); // Added feedback
         }
     }
 
@@ -232,12 +230,9 @@ public class GameUpdateSystem {
     private void handleStageAndWaveLogic() {
         if (gameState == null || gameState.currentStage == null || stageManager == null) return;
         
-        // DEBUG: Log current state before checking count
-        // System.out.println("handleStageAndWaveLogic - Current Wave: " + gameState.currentStage.getCurrentWave() + ", Enemy Count: " + gameState.enemyCount);
-
+        // Only check wave logic if all enemies are defeated
         if (gameState.enemyCount == 0) { // Check if wave is cleared
-            // DEBUG: Log when wave clear condition is met
-            System.out.println("--- Wave Cleared! Checking logic for Wave: " + gameState.currentStage.getCurrentWave() + " ---");
+            System.out.println("Wave " + gameState.currentStage.getCurrentWave() + " cleared (Stage " + gameState.currentStage.getStageNumber() + ")");
 
             int currentStageNum = gameState.currentStage.getStageNumber();
             int currentWave = gameState.currentStage.getCurrentWave();
@@ -246,7 +241,7 @@ public class GameUpdateSystem {
 
             // Check if the final wave of the final stage is completed
             if (currentStageNum == finalStage && currentWave == totalWaves) {
-                System.out.println("DEBUG: Final wave of final stage cleared! Game Won!");
+                System.out.println("*** GAME WON! Final stage completed! ***");
                 gameState.gameWon = true; // Set the win flag
                 // Call GameLogic to handle win sequence (prompt, save, game over)
                 gameLogic.handleGameWin(); 
@@ -254,7 +249,7 @@ public class GameUpdateSystem {
             }
 
             if (currentWave == totalWaves) {
-                 System.out.println("DEBUG: End of Stage " + gameState.currentStage.getStageNumber() + ". Moving to next stage cutscene.");
+                 System.out.println("Stage " + gameState.currentStage.getStageNumber() + " completed! Advancing to next stage...");
                 // Move to the next stage
                 int nextStageNum = currentStageNum + 1;
                 gameState.currentStage.setStageNumber(nextStageNum);
@@ -262,42 +257,32 @@ public class GameUpdateSystem {
                 // --- SET TOTAL WAVES FOR NEXT STAGE ---
                 int wavesForNextStage;
                  switch (nextStageNum) {
-                     case 2: wavesForNextStage = 7; break; // Example: Stage 2 has 7 waves
-                     case 3: wavesForNextStage = 8; break; // Example: Stage 3 has 8 waves
-                     case 4: wavesForNextStage = 9; break; // Example: Stage 4 has 9 waves
+                     case 2: wavesForNextStage = 7; break; // Stage 2 has 7 waves
+                     case 3: wavesForNextStage = 8; break; // Stage 3 has 8 waves
+                     case 4: wavesForNextStage = 9; break; // Stage 4 has 9 waves
                      default: wavesForNextStage = 7; break; // Fallback
                  }
                  gameState.currentStage.setTotalWaves(wavesForNextStage);
-                 System.out.println("DEBUG: Set TotalWaves for Stage " + nextStageNum + " to " + wavesForNextStage);
                  // -------------------------------------
                 gameState.currentStage.setSpecialEnemySpawned(false);
                 resetEntityLists(); 
                 stageManager.startCutscene(); // Trigger cutscene between stages
             } else if (currentWave == totalWaves - 1) {
-                 System.out.println("DEBUG: Checking Main Boss spawn condition (CurrentWave=" + currentWave + ", Expected=" + (totalWaves - 1) + ")");
                 // Spawn main boss
                 if (!gameState.currentStage.isSpecialEnemySpawned()) {
-                    System.out.println("DEBUG: Spawning Main Boss!");
                     gameState.currentStage.setSpecialEnemySpawned(true);
                     createMainboss();
                     gameState.currentStage.setCurrentWave(currentWave + 1);
-                } else {
-                     System.out.println("DEBUG: Main Boss already spawned this stage.");
                 }
             } else if (currentWave == totalWaves - 2) {
-                 System.out.println("DEBUG: Checking Mini Boss spawn condition (CurrentWave=" + currentWave + ", Expected=" + (totalWaves - 2) + ")");
                 // Spawn miniboss
                  if (!gameState.currentStage.isSpecialEnemySpawned()) {
-                    System.out.println("DEBUG: Spawning Mini Boss!");
                     gameState.currentStage.setSpecialEnemySpawned(true);
                     createMiniboss();
                     gameState.currentStage.setCurrentWave(currentWave + 1);
                     gameState.currentStage.setSpecialEnemySpawned(false); 
-                 } else {
-                     System.out.println("DEBUG: Mini Boss already spawned this stage.");
                  }
             } else {
-                System.out.println("DEBUG: Moving to next normal wave (" + (currentWave + 1) + ")");
                 // Move to the next normal wave
                 gameState.currentStage.setCurrentWave(currentWave + 1);
                 resetEntityLists();
@@ -348,10 +333,9 @@ public class GameUpdateSystem {
          // This method needs to be implemented
          // Currently GameState calls gameState.dropLoot() which doesn't exist
          // Example: Add a small chance to drop money
-         if (random.nextInt(100) < 15) { // Increased chance from 10% to 15%
-            int lootAmount = 10 + random.nextInt(16); // e.g., 10-25 money
+         if (random.nextInt(100) < 15) { // 15% chance for money drop
+            int lootAmount = 10 + random.nextInt(16); // 10-25 money
             gameState.addMoney(lootAmount);
-            System.out.println("Enemy dropped " + lootAmount + " money!");
         }
     }
 
@@ -366,7 +350,8 @@ public class GameUpdateSystem {
         maxEnemyRows = Math.min(maxEnemyRows, Constants.ENEMY_MAX_ROWS);
         maxEnemyColumns = Math.min(maxEnemyColumns, Constants.ENEMY_MAX_COLS);
 
-        gameState.enemyArray.clear(); 
+        gameState.enemyArray.clear();
+        gameState.enemyCount = 0; // Reset count before creating new enemies 
         Image bulletImg = assetLoader.getImage(Constants.ENEMY_LASER_IMG_KEY); // Load bullet image once
 
         for (int r = 0; r < maxEnemyRows; r++) {
@@ -579,8 +564,9 @@ public class GameUpdateSystem {
                 gameState.enemyArray.add(enemy);
             }
         }
+        // Update enemy count after all enemies are created
         gameState.enemyCount = gameState.enemyArray.size();
-        System.out.println("Created " + gameState.enemyCount + " enemies for wave " + currentWave + " of Stage " + stageNum);
+        System.out.println("Wave " + currentWave + " (Stage " + stageNum + "): Created " + gameState.enemyCount + " enemies");
     }
 
     // Helper method for creating fallback enemy to reduce code duplication
@@ -597,6 +583,7 @@ public class GameUpdateSystem {
         if (gameState == null || gameState.enemyArray == null || assetLoader == null || gameState.currentStage == null) return;
         int stageNum = gameState.currentStage.getStageNumber();
         gameState.enemyArray.clear();
+        gameState.enemyCount = 0; // Reset count before creating miniboss
         Enemy miniboss = null;
 
         switch (stageNum) {
@@ -640,9 +627,9 @@ public class GameUpdateSystem {
         if (miniboss != null) {
             gameState.enemyArray.add(miniboss);
             gameState.enemyCount = 1;
-            System.out.println("Created Miniboss for Stage " + stageNum + ": " + ((SpecialEnemy)miniboss).getEnemyBossName());
+            System.out.println("Stage " + stageNum + " Miniboss: " + ((SpecialEnemy)miniboss).getEnemyBossName() + " (HP: " + ((SpecialEnemy)miniboss).getHitpoints() + ")");
         } else {
-             System.err.println("Warning: Failed to create miniboss for stage " + stageNum);
+             System.err.println("ERROR: Failed to create miniboss for stage " + stageNum);
              gameState.enemyCount = 0; // Ensure count is 0 if creation failed
         }
     }
@@ -651,6 +638,7 @@ public class GameUpdateSystem {
         if (gameState == null || gameState.enemyArray == null || assetLoader == null || gameState.currentStage == null) return;
          int stageNum = gameState.currentStage.getStageNumber();
         gameState.enemyArray.clear();
+        gameState.enemyCount = 0; // Reset count before creating main boss
         Enemy boss = null;
         Image bossImg;
 
@@ -712,11 +700,11 @@ public class GameUpdateSystem {
         // --------------------
 
         if (boss != null) {
-             gameState.enemyArray.add(boss);
+            gameState.enemyArray.add(boss);
             gameState.enemyCount = 1;
-             System.out.println("Created Main Boss for Stage " + stageNum + ": " + ((SpecialEnemy)boss).getEnemyBossName());
+            System.out.println("Stage " + stageNum + " Main Boss: " + ((SpecialEnemy)boss).getEnemyBossName() + " (HP: " + ((SpecialEnemy)boss).getHitpoints() + ")");
         } else {
-             System.err.println("Warning: Failed to create main boss for stage " + stageNum);
+             System.err.println("ERROR: Failed to create main boss for stage " + stageNum);
              gameState.enemyCount = 0; // Ensure count is 0 if creation failed
         }
     }
@@ -781,9 +769,6 @@ public class GameUpdateSystem {
                 // Simpler: Spawn relative to center, adjusted by half the offset
                 int offset = Constants.MULTI_SHOT_PARALLEL_OFFSET;
                 spawnX = shipCenterX + (i == 0 ? -offset : offset) - Constants.BULLET_WIDTH / 2 ;
-                // --- DEBUG --- 
-                System.out.println("[DEBUG]   Multi-shot Iteration: " + i + " | SpawnX: " + spawnX);
-                // ------------- 
             }
             
             // Remove velocity calculations based on angle
@@ -827,8 +812,6 @@ public class GameUpdateSystem {
                 // Use effective cooldown when resetting
                 gameState.remainingWaveBlastCooldown = effectiveCooldownQ;
             }
-        } else {
-            System.out.println("Wave Blast (Q) on cooldown! " + String.format("%.1f", (double) gameState.remainingWaveBlastCooldown / 1000) + "s");
         }
     }
 
@@ -859,8 +842,6 @@ public class GameUpdateSystem {
                 // Use effective cooldown when resetting
                 gameState.remainingLaserBeamCooldown = effectiveCooldownE;
             }
-        } else {
-            System.out.println("Laser Beam (E) on cooldown! " + String.format("%.1f", (double) gameState.remainingLaserBeamCooldown / 1000) + "s");
         }
     }
 
@@ -882,11 +863,6 @@ public class GameUpdateSystem {
                  // Use effective cooldown when resetting
                 gameState.remainingPhaseShiftCooldown = effectiveCooldownR;
             }
-            System.out.println("Phase Shift Activated!");
-        } else if (gameState.isPhaseShiftActive) {
-            System.out.println("Phase Shift already active!");
-        } else {
-            System.out.println("Phase Shift (R) on cooldown! " + String.format("%.1f", (double) gameState.remainingPhaseShiftCooldown / 1000) + "s");
         }
     }
 
@@ -920,6 +896,7 @@ public class GameUpdateSystem {
         if (gameState.laserBeamArray != null) gameState.laserBeamArray.clear();
         gameState.isPhaseShiftActive = false;
         gameState.phaseShiftEndTime = 0;
+        gameState.enemyCount = 0; // CRITICAL FIX: Reset enemy count when clearing lists
     }
     
     private void resetCooldowns() {

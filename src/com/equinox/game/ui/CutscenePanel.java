@@ -177,7 +177,7 @@ public class CutscenePanel extends JPanel implements KeyListener {
               repaint(); // Redraw with the new frame
          } else {
              // Cutscene finished, transition via StageManager
-             stageManager.showShop(); // Or whatever the next step is
+             stageManager.endCutscene(); // Properly end cutscene and start gameplay
          }
     }
 
